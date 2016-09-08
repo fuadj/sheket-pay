@@ -1,3 +1,3 @@
-Payment client for sheket. It allows only people who've got permission to issue payment reciepts
+Payment client for sheket. It allows only people who've got permission to issue payment receipts
 to be authenticated. This is temporary as users will be able to pay for themselves with mobile
 payments like HelloCash and M-Birr.
