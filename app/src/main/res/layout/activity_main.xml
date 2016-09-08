@@ -143,6 +143,8 @@
                     android:layout_height="wrap_content"
                     android:inputType="numberDecimal"
                     android:ems="10"
+                    android:imeOptions="actionDone"
+                    android:singleLine="true"
                     android:id="@+id/edit_employees"
                     app:layout_gravity="fill_horizontal"
                     android:layout_marginLeft="8dp" />
@@ -168,6 +170,8 @@
                     android:layout_height="wrap_content"
                     android:inputType="numberDecimal"
                     android:ems="10"
+                    android:imeOptions="actionDone"
+                    android:singleLine="true"
                     android:id="@+id/edit_branches"
                     app:layout_gravity="fill_horizontal"
                     android:layout_marginLeft="8dp" />
@@ -192,6 +196,8 @@
                     android:layout_height="wrap_content"
                     android:inputType="numberDecimal"
                     android:ems="10"
+                    android:imeOptions="actionDone"
+                    android:singleLine="true"
                     android:id="@+id/edit_items"
                     app:layout_gravity="fill_horizontal"
                     android:layout_marginLeft="8dp" />
