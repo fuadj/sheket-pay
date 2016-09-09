@@ -1,6 +1,8 @@
 package com.mukera.sheket.sheketpay;
 
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -66,19 +68,19 @@ public class MainActivity extends AppCompatActivity {
 
         CompoundButton.OnCheckedChangeListener listener =
                 new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                int _id = buttonView.getId();
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        int _id = buttonView.getId();
 
-                if (_id == mCheckEmployees.getId()) {
-                    mEditEmployees.setEnabled(isChecked);
-                } else if (_id == mCheckBranches.getId()) {
-                    mEditBranches.setEnabled(isChecked);
-                } else if (_id == mCheckItems.getId()) {
-                    mEditItems.setEnabled(isChecked);
-                }
-            }
-        };
+                        if (_id == mCheckEmployees.getId()) {
+                            mEditEmployees.setEnabled(isChecked);
+                        } else if (_id == mCheckBranches.getId()) {
+                            mEditBranches.setEnabled(isChecked);
+                        } else if (_id == mCheckItems.getId()) {
+                            mEditItems.setEnabled(isChecked);
+                        }
+                    }
+                };
 
         mCheckEmployees.setOnCheckedChangeListener(listener);
         mCheckBranches.setOnCheckedChangeListener(listener);
@@ -117,6 +119,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     static final Vector<String> CONTRACT_TYPES;
+
     static {
         CONTRACT_TYPES = new Vector<>();
         CONTRACT_TYPES.add("--Select Contract--");
@@ -169,9 +172,23 @@ public class MainActivity extends AppCompatActivity {
         mLayoutLogout.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                PrefUtil.logoutUser(MainActivity.this);
-                finish();
-                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                new AlertDialog.Builder(MainActivity.this).
+                        setTitle("Log-out").
+                        setMessage("Are you sure?").
+                        setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                PrefUtil.logoutUser(MainActivity.this);
+                                finish();
+                                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                            }
+                        }).
+                        setNegativeButton("No", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        }).show();
             }
         });
 
