@@ -80,6 +80,7 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onError(FacebookException error) {
+                Toast.makeText(getApplicationContext(), "Login Error: " + error.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
         mFacebookButton = (FancyButton) findViewById(R.id.facebook_login);
@@ -121,8 +122,7 @@ public class LoginActivity extends AppCompatActivity {
 
         static final String JSON_RESPONSE_ERR = "error_message";
 
-        static final String JSON_REQUEST_LOGIN_COOKIE = "Set-Cookie";
-        static final String JSON_RESPONSE_LOGIN_COOKIE = "Cookie";
+        static final String JSON_RESPONSE_LOGIN_COOKIE = "Set-Cookie";
 
         private String mToken;
         private String errMsg;
