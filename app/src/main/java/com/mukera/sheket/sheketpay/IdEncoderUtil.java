@@ -150,7 +150,7 @@ public class IdEncoderUtil {
 
     public static long decodeEncodedId(String encoded_id, @ID_TYPE int id_type) {
         if (encoded_id == null) return INVALID_ENCODED_ID;
-        encoded_id = encoded_id.trim().toLowerCase();
+        encoded_id = removeDelimiterOnEncodedId(encoded_id.trim().toLowerCase());
         if (TextUtils.isEmpty(encoded_id)) return INVALID_ENCODED_ID;
 
         if (encoded_id.length() < 3 ||
