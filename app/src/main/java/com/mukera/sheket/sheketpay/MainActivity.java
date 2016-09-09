@@ -3,6 +3,7 @@ package com.mukera.sheket.sheketpay;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.support.v4.util.Pair;
 import android.support.v7.app.AlertDialog;
@@ -61,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
         mBtnMakePayment = (FancyButton) findViewById(R.id.btn_make_payment);
 
         final Drawable successIcon = getResources().getDrawable(R.mipmap.ic_action_success);
+        successIcon.setBounds(new Rect(0, 0, successIcon.getIntrinsicWidth(), successIcon.getIntrinsicHeight()));
+
         mEditPaymentNumber = (EditText) findViewById(R.id.edit_payment_number);
         mEditPaymentNumber.addTextChangedListener(new TextWatcher() {
             @Override
@@ -86,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     mEditPaymentNumber.setError(null);
                 }
+                updateViews();
             }
         });
 
@@ -111,6 +115,28 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        TextWatcher watcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateViews();
+            }
+        };
+
+        mEditDuration.addTextChangedListener(watcher);
+        mEditEmployees.addTextChangedListener(watcher);
+        mEditBranches.addTextChangedListener(watcher);
+        mEditItems.addTextChangedListener(watcher);
+
         CompoundButton.OnCheckedChangeListener listener =
                 new CompoundButton.OnCheckedChangeListener() {
                     @Override
@@ -124,6 +150,7 @@ public class MainActivity extends AppCompatActivity {
                         } else if (_id == mCheckItems.getId()) {
                             mEditItems.setEnabled(isChecked);
                         }
+                        updateViews();
                     }
                 };
 
@@ -142,9 +169,10 @@ public class MainActivity extends AppCompatActivity {
                 mSpinnerType.getSelectedItemPosition() == 2 ?
                         View.VISIBLE : View.GONE);
 
-        if (!IdEncoderUtil.isValidEncodedCompanyId(trimmed(mEditPaymentNumber)) ||
+        if (mSpinnerType.getSelectedItemPosition() == 0 ||
+                !IdEncoderUtil.isValidEncodedCompanyId(trimmed(mEditPaymentNumber)) ||
                 trimmed(mEditDuration).isEmpty()) {
-            mBtnMakePayment.setVisibility(View.INVISIBLE);
+            setPayBtnState(false);
             return;
         }
 
@@ -152,18 +180,28 @@ public class MainActivity extends AppCompatActivity {
         if (mSpinnerType.getSelectedItemPosition() == 2) {
             if (mCheckEmployees.isChecked() &&
                     trimmed(mEditEmployees).isEmpty()) {
-                mBtnMakePayment.setVisibility(View.INVISIBLE);
+                setPayBtnState(false);
+                return;
             }
             if (mCheckBranches.isChecked() &&
                     trimmed(mEditBranches).isEmpty()) {
-                mBtnMakePayment.setVisibility(View.INVISIBLE);
+                setPayBtnState(false);
+                return;
             }
             if (mCheckItems.isChecked() &&
                     trimmed(mEditItems).isEmpty()) {
-                mBtnMakePayment.setVisibility(View.INVISIBLE);
+                setPayBtnState(false);
+                return;
             }
         }
-        mBtnMakePayment.setVisibility(View.VISIBLE);
+        setPayBtnState(true);
+    }
+
+    void setPayBtnState(boolean enabled) {
+        mBtnMakePayment.setEnabled(enabled);
+        mBtnMakePayment.setBackgroundColor(
+                enabled ? 0xff039be5 : 0xff78909c
+        );
     }
 
     // when resetting the UI, the listeners might be called, just ignore it.
@@ -272,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
                 long company_id = IdEncoderUtil.decodeEncodedId(trimmed(mEditPaymentNumber),
                         IdEncoderUtil.ID_TYPE_COMPANY);
                 int contract_type = mSpinnerType.getSelectedItemPosition();
-                int duraiton = Integer.parseInt(trimmed(mEditDuration));
+                int duration = Integer.parseInt(trimmed(mEditDuration));
 
                 final int LIMIT_NONE = -1;
                 int limit_employee = LIMIT_NONE, limit_branch = LIMIT_NONE, limit_item = LIMIT_NONE;
@@ -290,7 +328,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     paymentRequest.put("company_id", company_id);
                     paymentRequest.put("contract_type", contract_type);
-                    paymentRequest.put("duration", duraiton);
+                    paymentRequest.put("duration", duration);
                     paymentRequest.put("employee_limit", limit_employee);
                     paymentRequest.put("branch_limit", limit_branch);
                     paymentRequest.put("item_limit", limit_item);
@@ -334,7 +372,7 @@ public class MainActivity extends AppCompatActivity {
 
     Pair<Boolean, String> makePayment(JSONObject paymentRequestObject) {
         Request.Builder builder = new Request.Builder();
-        builder.url(ServerAddress.getAddress() + "v1/payment/verify");
+        builder.url(ServerAddress.getAddress() + "v1/payment/issue");
         builder.addHeader("Cookie",
                 PrefUtil.getLoginCookie(MainActivity.this));
         builder.post(RequestBody.create(MediaType.parse("application/json"),
