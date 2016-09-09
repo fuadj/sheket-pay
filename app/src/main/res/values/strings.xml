@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Sheket Pay</string>
+    <string name="facebook_app_id" translatable="false">313445519010095</string>
 </resources>
