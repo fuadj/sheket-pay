@@ -3,10 +3,12 @@ package com.mukera.sheket.sheketpay;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
 
@@ -61,6 +63,26 @@ public class MainActivity extends AppCompatActivity {
                 resetUI();
             }
         });
+
+        CompoundButton.OnCheckedChangeListener listener =
+                new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                int _id = buttonView.getId();
+
+                if (_id == mCheckEmployees.getId()) {
+                    mEditEmployees.setEnabled(isChecked);
+                } else if (_id == mCheckBranches.getId()) {
+                    mEditBranches.setEnabled(isChecked);
+                } else if (_id == mCheckItems.getId()) {
+                    mEditItems.setEnabled(isChecked);
+                }
+            }
+        };
+
+        mCheckEmployees.setOnCheckedChangeListener(listener);
+        mCheckBranches.setOnCheckedChangeListener(listener);
+        mCheckItems.setOnCheckedChangeListener(listener);
     }
 
     // when resetting the UI, the listeners might be called, just ignore it.
@@ -113,6 +135,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
+
+        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
+        getSupportActionBar().setHomeAsUpIndicator(R.mipmap.ic_launcher);
+
         linkViews();
 
         mSpinnerType.setAdapter(
