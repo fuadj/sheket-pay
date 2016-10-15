@@ -17,18 +17,13 @@ import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.Response;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
+import com.mukera.sheket.client.network.SheketServiceGrpc;
+import com.mukera.sheket.client.network.SignupResponse;
+import com.mukera.sheket.client.network.SingupRequest;
 import java.util.Arrays;
 
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 import mehdi.sakout.fancybuttons.FancyButton;
 
 /**
@@ -40,8 +35,6 @@ public class LoginActivity extends AppCompatActivity {
 
     private ProgressDialog mProgress = null;
     private CallbackManager mFacebookCallbackManager;
-
-    public static final OkHttpClient client = new OkHttpClient();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -91,8 +84,11 @@ public class LoginActivity extends AppCompatActivity {
         mFacebookButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                new SignInTask("").execute();
+                /*
                 LoginManager.getInstance().logInWithReadPermissions(LoginActivity.this,
                         Arrays.asList("public_profile"));
+                        */
             }
         });
     }
@@ -110,59 +106,40 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     class SignInTask extends AsyncTask<Void, Void, Boolean> {
-        public static final String REQUEST_TOKEN = "token";
-
-        // this is what differentiates the normal sheket with this "pay" sheket.
-        // we add this optional field and set its value to true. Server checks
-        // if the user is authorized for this, and only then does it send the
-        // login cookie.
-        public static final String REQUEST_IS_SHEKET_PAY = "is_sheket_pay";
-
-        public static final String RESPONSE_USER_ID = "user_id";
-
-        static final String JSON_RESPONSE_ERR = "error_message";
-
-        static final String JSON_RESPONSE_LOGIN_COOKIE = "Set-Cookie";
-
         private String mToken;
         private String errMsg;
 
         public SignInTask(String token) {
             super();
-
             mToken = token;
         }
 
         @Override
         protected Boolean doInBackground(Void... params) {
             try {
+                SignupResponse response = new SheketGRPCCall<SignupResponse>().runBlockingCall(new SheketGRPCCall.GRPCCallable<SignupResponse>() {
+                    @Override
+                    public SignupResponse runGRPCCall() throws Exception {
+                        ManagedChannel managedChannel = ManagedChannelBuilder.
+                                forAddress(ConfigData.getServerIP(), ConfigData.getServerPort()).
+                                usePlaintext(true).
+                                build();
+
+                        SheketServiceGrpc.SheketServiceBlockingStub blockingStub =
+                                SheketServiceGrpc.newBlockingStub(managedChannel);
+
+                        SingupRequest request = SingupRequest.newBuilder().
+                                setToken(mToken).build();
+                        return blockingStub.userSignup(request);
+                    }
+                });
+
                 Context context = LoginActivity.this;
 
-                Request.Builder builder = new Request.Builder();
-                builder.url(ServerAddress.getAddress() + "v1/signin/facebook");
-                builder.post(
-                        RequestBody.create(MediaType.parse("application/json"),
-                                new JSONObject().put(REQUEST_TOKEN, mToken).
-                                        put(REQUEST_IS_SHEKET_PAY, true).
-                                        toString()
-                        )
-                );
-                Response response = client.newCall(builder.build()).execute();
-                if (!response.isSuccessful()) {
-                    JSONObject err = new JSONObject(response.body().string());
-                    errMsg = err.getString(JSON_RESPONSE_ERR);
-                    return false;
-                }
+                PrefUtil.setUserId(context, response.getUserId());
+                PrefUtil.setLoginCookie(context, response.getLoginCookie());
 
-                String login_cookie = response.header(JSON_RESPONSE_LOGIN_COOKIE);
-
-                JSONObject result = new JSONObject(response.body().string());
-
-                long user_id = result.getLong(RESPONSE_USER_ID);
-
-                PrefUtil.setUserId(context, user_id);
-                PrefUtil.setLoginCookie(context, login_cookie);
-            } catch (JSONException | IOException e) {
+            } catch (SheketGRPCCall.SheketException e) {
                 errMsg = e.getMessage();
                 return false;
             }

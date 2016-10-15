@@ -21,6 +21,10 @@ import android.widget.EditText;
 import android.widget.Spinner;
 
 
+import com.mukera.sheket.client.network.IssuePaymentRequest;
+import com.mukera.sheket.client.network.IssuePaymentResponse;
+import com.mukera.sheket.client.network.SheketAuth;
+import com.mukera.sheket.client.network.SheketServiceGrpc;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
@@ -34,6 +38,8 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.Vector;
 
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 import mehdi.sakout.fancybuttons.FancyButton;
 
 public class MainActivity extends AppCompatActivity {
@@ -307,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 final JSONObject paymentRequest = new JSONObject();
 
-                long company_id = IdEncoderUtil.decodeEncodedId(trimmed(mEditPaymentNumber),
+                int company_id = (int) IdEncoderUtil.decodeEncodedId(trimmed(mEditPaymentNumber),
                         IdEncoderUtil.ID_TYPE_COMPANY);
                 int contract_type = mSpinnerType.getSelectedItemPosition();
                 int duration = Integer.parseInt(trimmed(mEditDuration));
@@ -325,31 +331,60 @@ public class MainActivity extends AppCompatActivity {
                         limit_item = Integer.parseInt(trimmed(mEditItems));
                 }
 
-                try {
-                    paymentRequest.put("company_id", company_id);
-                    paymentRequest.put("contract_type", contract_type);
-                    paymentRequest.put("duration", duration);
-                    paymentRequest.put("employee_limit", limit_employee);
-                    paymentRequest.put("branch_limit", limit_branch);
-                    paymentRequest.put("item_limit", limit_item);
-
-                } catch (JSONException e) {
-                    // TODO: better error handling can't encode it
-                    return;
-                }
+                final IssuePaymentRequest request = IssuePaymentRequest.newBuilder().
+                        setSheketAuth(
+                                SheketAuth.
+                                        newBuilder().
+                                        setLoginCookie(
+                                                PrefUtil.getLoginCookie(MainActivity.this)
+                                        )).
+                        setCompanyId(company_id).
+                        setContractType(contract_type).
+                        setDurationDays(duration).
+                        setEmployeeLimit(limit_employee).
+                        setBranchLimit(limit_branch).
+                        setItemLimit(limit_item).build();
 
                 final ProgressDialog verificationProgress = ProgressDialog.show(
                         MainActivity.this, "Making payment", "Please Wait...", true);
 
-                new Thread() {
+                new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        final Pair<Boolean, String> result = makePayment(paymentRequest);
+                        final boolean[] success = new boolean[1];
+                        final String[] errMsg = new String[1];
+                        try {
+                            IssuePaymentResponse response = new SheketGRPCCall<IssuePaymentResponse>().runBlockingCall(new SheketGRPCCall.GRPCCallable<IssuePaymentResponse>() {
+                                @Override
+                                public IssuePaymentResponse runGRPCCall() throws Exception {
+                                    ManagedChannel managedChannel = ManagedChannelBuilder.
+                                            forAddress(ConfigData.getServerIP(), ConfigData.getServerPort()).
+                                            usePlaintext(true).
+                                            build();
+
+                                    SheketServiceGrpc.SheketServiceBlockingStub blockingStub =
+                                            SheketServiceGrpc.newBlockingStub(managedChannel);
+                                    return blockingStub.issuePayment(request);
+                                }
+                            });
+                            success[0] = true;
+                        } catch (SheketGRPCCall.SheketInvalidLoginException e) {
+                            PrefUtil.logoutUser(MainActivity.this);
+                            finish();
+                            startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                        } catch (SheketGRPCCall.SheketInternetException e) {
+                            success[0] = false;
+                            errMsg[0] = "Internet problem";
+                        } catch (SheketGRPCCall.SheketException e) {
+                            success[0] = false;
+                            errMsg[0] = e.getMessage();
+                        }
+
                         MainActivity.this.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 verificationProgress.dismiss();
-                                if (result.first == Boolean.TRUE) {
+                                if (success[0]) {
                                     new AlertDialog.Builder(MainActivity.this).
                                             setIcon(android.R.drawable.ic_dialog_info).
                                             setMessage("Payment successful").
@@ -358,37 +393,13 @@ public class MainActivity extends AppCompatActivity {
                                     new AlertDialog.Builder(MainActivity.this).
                                             setIcon(android.R.drawable.ic_dialog_alert).
                                             setTitle("Payment Error").
-                                            setMessage(result.second).show();
+                                            setMessage(errMsg[0]).show();
                                 }
                             }
                         });
                     }
-                }.start();
+                }).start();
             }
         });
-    }
-
-    public static final OkHttpClient client = new OkHttpClient();
-
-    Pair<Boolean, String> makePayment(JSONObject paymentRequestObject) {
-        Request.Builder builder = new Request.Builder();
-        builder.url(ServerAddress.getAddress() + "v1/payment/issue");
-        builder.addHeader("Cookie",
-                PrefUtil.getLoginCookie(MainActivity.this));
-        builder.post(RequestBody.create(MediaType.parse("application/json"),
-                paymentRequestObject.toString()));
-        try {
-            Response response = client.newCall(builder.build()).execute();
-
-            JSONObject result = new JSONObject(response.body().string());
-
-            if (!response.isSuccessful()) {
-                return new Pair<>(Boolean.FALSE, result.getString("error_message"));
-            }
-
-            return new Pair<>(Boolean.TRUE, null);
-        } catch (JSONException | IOException e) {
-            return new Pair<>(Boolean.FALSE, e.getMessage());
-        }
     }
 }
